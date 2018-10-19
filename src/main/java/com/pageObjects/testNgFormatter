@@ -1,0 +1,210 @@
+package com.svb.listeners;
+
+import com.google.common.base.Throwables;
+import com.google.gson.Gson;
+
+
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
+import freemarker.template.TemplateExceptionHandler;
+import org.apache.commons.text.CaseUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.*;
+import org.testng.xml.XmlSuite;
+
+import java.io.*;
+import java.time.Duration;
+import java.util.*;
+
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
+public class TestNGFormatter implements IReporter {
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+
+    private LinkedList<String> linkedListTestGroupTags = new LinkedList<String>();
+
+    @Override
+    public void generateReport(List<XmlSuite> xmlSuites, List<ISuite> suites, String outputDirectory) {
+        int pass = 0;
+        int fail = 0;
+        int skip = 0;
+        long totalDuration = 0;
+
+        String executionStatus = "PASS";
+        String testGroupTagName = "";
+
+        List<TestSuite> testSuites = new ArrayList<>();
+        for (ISuite suite : suites) {
+            String testName = "";
+            List<IInvokedMethod> allInvokedMethods = suite.getAllInvokedMethods();
+            TestSuite testSuite = new TestSuite();
+            testSuite.setSuiteName(suite.getName());
+            List<TestMethod> testMethods = new ArrayList<>();
+            for (IInvokedMethod method : allInvokedMethods) {
+                TestMethod testMethod = new TestMethod();
+                String groups[] = method.getTestMethod().getGroups();
+                for (String groupTagName : groups) {
+                    if (!linkedListTestGroupTags.contains(CaseUtils.toCamelCase(groupTagName, true))) {
+                        linkedListTestGroupTags.add("" + CaseUtils.toCamelCase(groupTagName, true));
+                    }
+                }
+                Set<Map.Entry<String, ISuiteResult>> te = suite.getResults().entrySet();
+                Iterator its = te.iterator();
+                while (its.hasNext()) {
+                    testName = ((Map.Entry<String, ISuiteResult>) its.next()).getValue().getTestContext().getName();
+                }
+                //testMethod.setName(testName);
+                //To Append Method Name - please uncomment the below line
+                String tempDataProviderTestCaseName = "";
+                logger.info("\"testName\" Attribute Available for replace -> " + method.getTestResult().getAttributeNames().contains("testName"));
+                if (method.getTestResult().getAttributeNames().contains("testName") && null != method.getTestResult().getAttribute("testName")) {
+                    tempDataProviderTestCaseName = method.getTestResult().getAttribute("testName").toString().trim();
+                } else {
+                    tempDataProviderTestCaseName = method.getTestMethod().getMethodName().trim();
+                }
+                tempDataProviderTestCaseName = tempDataProviderTestCaseName.substring(0, 1).toUpperCase() + "" + tempDataProviderTestCaseName.substring(1);
+                testMethod.setName(tempDataProviderTestCaseName);
+                logger.debug("Test Evidences path is " + method.getTestResult().getAttributeNames());
+                //Just for debugging
+                for (String testAttributeName : method.getTestResult().getAttributeNames()) {
+                    logger.debug("Attribute Name -: " + testAttributeName + " - Value -> " + method.getTestResult().getAttribute(testAttributeName));
+                }
+                if (method.getTestResult().getAttribute("evidenceFile") != null) {
+                    testMethod.setScreenshotFile("" + method.getTestResult().getAttribute("evidenceFile"));
+                }
+                
+            /*    // Start defining mycustom method here
+                String excelLoc="C:\\Users\\hv\\eclipse-workspace\\TD_Gtex\\src\\main\\java\\com\\svb\\DataProviders\\com.ExcelUtils\\Gtex_Create_Message.xlsx";
+        		ExcelUtil obj=new ExcelUtil();
+        		try {
+					Object[][] data=obj.getExcelData(excelLoc,"Sheet1");
+					testMethod.setTestData1(data);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}    
+                // End defining mycustom method here
+*/                
+                Object testData = method.getTestResult().getAttribute("testData");
+                Gson gsonObj = new Gson();
+                String testDataStr = gsonObj.toJson(testData);
+                testMethod.setTestData(testDataStr);
+                
+                //  please uncomment the above framework steps , if the mycustom method is not working
+
+                long methodDuration = method.getTestResult().getEndMillis() - method.getTestResult().getStartMillis();
+                testMethod.setDuration(formatDuration(Duration.ofMillis(methodDuration)));
+
+                totalDuration = totalDuration + methodDuration;
+
+                if (method.getTestResult().getStatus() == 1) {
+                    testMethod.setStatus("PASS");
+                    pass += 1;
+                } else if (method.getTestResult().getStatus() == 2) {
+                    testMethod.setStatus("FAIL");
+                    testMethod.setFailedReason(escapeHtml(method.getTestResult().getThrowable().toString()));
+                    testMethod.setStackTrace(escapeHtml(Throwables.getStackTraceAsString(method.getTestResult().getThrowable())));
+                    executionStatus = "FAIL";
+                    fail += 1;
+                } else if (method.getTestResult().getStatus() == 3) {
+                    testMethod.setStatus("SKIP");
+                    executionStatus = "FAIL";
+                    skip += 1;
+                }
+                testMethods.add(testMethod);
+
+            }
+            testSuite.setTestMethods(testMethods);
+            testSuites.add(testSuite);
+        }
+        int total = pass + fail + skip;
+        Iterator it = linkedListTestGroupTags.iterator();
+        while (it.hasNext()) {
+            testGroupTagName += CaseUtils.toCamelCase(it.next().toString(), true) + ", ";
+        }
+        if (testGroupTagName.trim().length() > 0) {
+            testGroupTagName = testGroupTagName.trim().substring(0, testGroupTagName.trim().length() - 1);
+        }
+        long execTime = (System.currentTimeMillis() - TestNGExecutionListener.startTime);
+        Duration duration = Duration.ofMillis(execTime);
+        String executionTime = formatDuration(duration);
+        Map<String, Object> root = new HashMap<>();
+        root.put("total", total);
+        root.put("pass", pass);
+        root.put("fail", fail);
+        root.put("skip", skip);
+        root.put("executionTime", executionTime);
+        root.put("testSuites", testSuites);
+        root.put("executionStatus", executionStatus);
+        System.out.println("Check the app name : "+ System.getProperty("application.name"));
+//        root.put("application", System.getProperty("application.name"));
+//        root.put("release", System.getProperty("release.version"));
+//        root.put("environment", System.getProperty("DefaultENV"));
+//        root.put("browserName", System.getProperty("browserName", "chrome"));
+        root.put("application", "CBS");
+        root.put("release", "release N");
+        root.put("environment", "QA");
+        root.put("browserName", "Chrome");
+        root.put("testGroupTagName", ((testGroupTagName.trim().length() > 0) ? testGroupTagName : "Smoke:Run -> Functionality-CreateCif").toUpperCase());
+
+        // Generate HTML report from the template
+        generateHtmlReport(root);
+    }
+
+    private void generateHtmlReport(Map<String, Object> root) {
+        String reportHTMLFile = "report.html";
+        Configuration cfg = createConfiguration();
+        try (OutputStream fileStream = new FileOutputStream(TestNG.DEFAULT_OUTPUTDIR + File.separator + reportHTMLFile)) {
+            Template template = cfg.getTemplate("index.ftl");
+            Writer out = new OutputStreamWriter(fileStream, "UTF-8");
+            template.process(root, out);
+            out.close();
+        } catch (IOException | TemplateException e) {
+            logger.error("Create Configuration", e);
+        }
+    }
+
+    private Configuration createConfiguration() {
+        Configuration cfg = null;
+        try {
+            cfg = new Configuration(Configuration.VERSION_2_3_27);
+            cfg.setDirectoryForTemplateLoading(new File(getClass().getClassLoader().getResource("html-report").getFile()));
+            cfg.setDefaultEncoding("UTF-8");
+            cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+            cfg.setLogTemplateExceptions(false);
+            cfg.setWrapUncheckedExceptions(true);
+        } catch (IOException e) {
+            logger.error("Create Configuration", e);
+        }
+        return cfg;
+    }
+
+    private String formatDuration(Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.minusDays(days).toHours();
+        long minutes = duration.minusHours(hours).toMinutes();
+        long seconds = duration.getSeconds() % 60;
+        long ms = duration.minusSeconds(duration.getSeconds()).toMillis();
+
+        String result = "";
+        if (days != 0) {
+            result += days + " days ";
+        }
+        if (hours != 0) {
+            result += hours + " hours ";
+        }
+        if (minutes != 0) {
+            result += minutes + " minutes ";
+        }
+        if (seconds != 0) {
+            result += seconds + " seconds ";
+        }
+        if (ms != 0) {
+            result += ms + " ms";
+        }
+        return result;
+    }
+}
