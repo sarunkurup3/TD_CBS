@@ -1,0 +1,24 @@
+package com.svb.listeners;
+
+import java.util.List;
+
+public class TestSuite {
+    private String suiteName;
+    private List<TestMethod> testMethods;
+
+    public String getSuiteName() {
+        return suiteName;
+    }
+
+    public void setSuiteName(String suiteName) {
+        this.suiteName = suiteName;
+    }
+
+    public List<TestMethod> getTestMethods() {
+        return testMethods;
+    }
+
+    public void setTestMethods(List<TestMethod> testMethods) {
+        this.testMethods = testMethods;
+    }
+}
