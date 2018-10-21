@@ -1,0 +1,120 @@
+package com.svb.listeners;
+
+import com.google.common.io.Resources;
+import com.svb.core.TestData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.IExecutionListener;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+public class TestNGExecutionListener implements IExecutionListener {
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+    public static long startTime, endTime;
+
+    @Override
+    public void onExecutionStart() {
+        startTime = System.currentTimeMillis();
+        logger.info("Execution Start Time -> " + startTime);
+        loadTestData();
+    }
+
+    /**
+     * Loads data from properties file
+     *
+     * @return
+     */
+    private File[] getResourceFolderFiles() {
+    	System.out.println("----------------------------------------------------------------------");
+    	System.out.println("Arun --> Printing from resource : TestNGExecuitionListener -> Inside 'getResourceFolderFiles' ->");
+    	System.out.println("----------------------------------------------------------------------");
+        String environmentFolderPath = URLDecoder.decode(Resources.getResource("data").getFile()) + File.separator + System.getProperty("DefaultENV", "QA1");
+        System.out.println("first Part  "+URLDecoder.decode(Resources.getResource("data").getFile()) );
+        System.out.println("second Part "+ File.separator );
+        System.out.println("third Part  "+System.getProperty("DefaultENV", "QA1"));
+        System.out.println(environmentFolderPath);
+        System.out.println("----------------------------------------------------------------------");
+        System.out.println(" Arun Environment Folder Path --> "+environmentFolderPath);
+        System.out.println("----------------------------------------------------------------------");
+        String environmentConfigFolderPath = URLDecoder.decode(Resources.getResource("config").getFile()) + File.separator;
+        System.out.println("----------------------------------------------------------------------");
+        System.out.println(" Arun --> Env config Folder Path "+environmentConfigFolderPath);
+        System.out.println("----------------------------------------------------------------------");
+        logger.info("Load resource property file(s) data " + environmentFolderPath);
+        logger.info("Load config property file data  " + environmentConfigFolderPath);
+        String environmentFolders[] = new String[]{environmentFolderPath, environmentConfigFolderPath};
+        List<File> fileList = new ArrayList<>();
+        for (String envFolders : environmentFolders) {
+            for (File file : filterByExtension(new File(envFolders), ".properties")) {
+                fileList.add(file);
+            }
+        }
+        File[] files = new File[fileList.size()];	
+        files = fileList.toArray(files);
+        return files;
+    }
+
+    /**
+     * <p>
+     * Filter the files in a specific directory by file type extension
+     * For E.g.:
+     * .properties
+     * .csv
+     * .xlsx
+     * .xls
+     * </p>
+     *
+     * <code>
+     * public static File[] filterByExtension(File fileDir, String extenstionType) {
+     * return fileDir.listFiles(new FilenameFilter() {
+     *
+     * @param fileDir
+     * @param extensionType
+     * @return
+     * @Override public boolean accept(File fileDirectoryPath, String name) {
+     * if (name.toLowerCase().endsWith(extenstionType)) {
+     * return true;
+     * } else {
+     * return false;
+     * }
+     * }
+     * });
+     * </code>
+     */
+    public static File[] filterByExtension(File fileDir, String extensionType) {
+        return fileDir.listFiles((dir, name) -> name.toLowerCase().endsWith(extensionType));
+    }
+
+    private Properties loadData(File[] files) {
+        Properties properties = new Properties();
+        for (File f : files) {
+            Properties tempProperties = new Properties();
+            try {
+                logger.info("File Path -> " + f.getAbsolutePath());
+                tempProperties.load(new FileInputStream(f.getAbsolutePath()));
+                properties.putAll(tempProperties);
+                logger.info("Property File Key, Value details -> " + tempProperties);
+            } catch (IOException e) {
+                logger.error("Exception: while loading property files ", e);
+            }
+        }
+        return properties;
+    }
+
+    private void loadTestData() {
+        TestData.initiateTestData(loadData(getResourceFolderFiles()));
+    }
+
+    @Override
+    public void onExecutionFinish() {
+        endTime = System.currentTimeMillis();
+        logger.info("Total Execution Time -> " + (endTime - startTime));
+    }
+}
