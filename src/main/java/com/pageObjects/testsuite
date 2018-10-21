@@ -1,0 +1,80 @@
+package com.svb.listeners;
+
+public class TestMethod {
+    private String name;
+    private String testData;
+    private Object[][] testdat1;
+    private String status;
+    private String screenshotFile;
+    private String failedReason;
+    private String duration;
+    private String stackTrace;
+
+    public TestMethod() {
+        this.screenshotFile = "";
+        this.failedReason = "";
+        this.stackTrace = "";
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getTestData() {
+        return testData;
+    }
+
+    public void setTestData(String testData) {
+        this.testData = testData;
+    }
+    public void setTestData1(Object[][] data) {
+        this.testdat1 = data;
+    }
+    public Object[][] getTestData1() {
+        return testdat1;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getScreenshotFile() {
+        return screenshotFile;
+    }
+
+    public void setScreenshotFile(String screenshotFile) {
+        this.screenshotFile = screenshotFile;
+    }
+
+    public String getFailedReason() {
+        return failedReason;
+    }
+
+    public void setFailedReason(String failedReason) {
+        this.failedReason = failedReason;
+    }
+
+    public void setDuration(String duration) {
+        this.duration = duration;
+    }
+
+    public String getDuration() {
+        return duration;
+    }
+
+    public void setStackTrace(String stackTrace) {
+        this.stackTrace = stackTrace;
+    }
+
+    public String getStackTrace() {
+        return stackTrace;
+    }
+}
