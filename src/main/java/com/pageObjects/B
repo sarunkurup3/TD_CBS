@@ -1,0 +1,227 @@
+TestGroupTags
+public final class TestGroupTags {
+
+    public static final String SMOKE = "Smoke";
+    public static final String REGRESSION = "Regression";
+    public static final String FUNCTIONAL = "Functional";
+    public static final String SANITY = "Sanity";
+    public static final String INTEGRATION = "Integration";
+    public static final String ACCEPTANCE = "Acceptance";
+
+    private TestGroupTags() {
+    }
+}
+
+TestPage
+public class TestPage {
+
+	    private static Logger log = LogManager.getLogger(TestPage.class);
+	    private WebDriver driver;
+	    private DriverUtilities driverUtilities;
+	    private CommonActions commonActions;
+	    
+	    @SVBFindBy(xpath="//*[@id=\"tsf\"]/div[2]/div/div[1]/div/div[1]/input")
+	    private WebElement searchBox;
+	  
+	    @SVBFindBy(xpath="//*[@id=\"tsf\"]/div[2]/div/div[2]/div[2]/div/center/input[1]")
+	    private WebElement searchButton;
+	    
+	    @SVBFindBy(xpath="//*[@id=\"rso\"]/div[1]/div/div/div/div/div[1]/a/h3")
+	    private WebElement url;
+	    
+	    public TestPage() {
+	        driver = DriverManager.getDriver();
+	        CustomPageFactory.initElements(driver, this);
+	        driverUtilities = new DriverUtilities();
+	        commonActions = new CommonActions();}
+	    
+	    public void Message(String value) {
+	    	searchBox.sendKeys(value);
+	    	DriverCommand.takeScreenshot("Step 2: Search Page");
+	    	searchButton.click();
+	    }
+	    public String verfiyLink() {
+	    	String value=url.getText();
+	    	Assert.assertEquals("Silicon Valley Bank: Home", value);
+	    	return value;
+	    }
+	    	
+}
+
+TestRunner
+
+/**
+ * Test Runner for Cucumber and Java - To glue Features with Step Definitions
+ *
+ * @author: anarora on 10/2/2018.
+ */
+
+import cucumber.api.CucumberOptions;
+import cucumber.api.testng.TestNGCucumberRunner;
+import cucumber.api.testng.CucumberFeatureWrapper;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import com.svb.constants.TestGroupTags;
+
+@CucumberOptions(
+        features = "src/test/resources/features",
+        glue = {"com/svb/stepsDef"},
+        tags = {"~@Ignore"},
+        format = {
+                "pretty",
+                "html:target/cucumber-reports/cucumber-pretty",
+                "json:target/cucumber-reports/CucumberTestReport.json",
+                "rerun:target/cucumber-reports/rerun.txt"
+        })
+public class TestRunner {
+    private TestNGCucumberRunner testNGCucumberRunner;
+
+    @BeforeClass(alwaysRun = true)
+    public void setUpClass() throws Exception {
+        testNGCucumberRunner = new TestNGCucumberRunner(this.getClass());
+    }
+
+    @Test(groups = {TestGroupTags.FUNCTIONAL}, description = "Runs Cucumber Feature", dataProvider = "features")
+    public void feature(CucumberFeatureWrapper cucumberFeature) {
+        testNGCucumberRunner.runCucumber(cucumberFeature.getCucumberFeature());
+    }
+
+    @DataProvider
+    public Object[][] features() {
+        return testNGCucumberRunner.provideFeatures();
+    }
+
+    @AfterClass(alwaysRun = true)
+    public void tearDownClass() throws Exception {
+        testNGCucumberRunner.finish();
+    }
+}
+
+ServiceHooks
+
+package com.svb.stepsDef;
+
+import com.svb.drivers.DriverCommand;
+import com.svb.drivers.DriverManager;
+import com.svb.factory.CustomPageFactory;
+import cucumber.api.Scenario;
+import cucumber.api.java.After;
+import cucumber.api.java.Before;
+import org.openqa.selenium.WebDriver;
+import org.testng.Reporter;
+
+/**
+ * Service Hooks for Cucumber Runs Initialization
+ *
+ * @author: anarora on 10/2/2018.
+ */
+
+public class ServiceHooks {
+
+    public static WebDriver driver;
+    public static String currentTestCaseName;
+
+    public ServiceHooks() {
+    }
+
+    @Before
+    public void initializeTest() {
+
+        //currentTestCaseName = Reporter.getCurrentTestResult().getTestContext().getName();
+        //DriverCommand.setThreadTestName(currentTestCaseName);
+        driver = DriverManager.getDriver();
+        CustomPageFactory.initElements(driver, this);
+    }
+
+
+    @After
+    public void embedScreenshot(Scenario scenario) {
+        if (scenario.isFailed()) {
+            try {
+                // Code to capture and embed images in test reports (if scenario fails)
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+
+TestStep
+
+package com.svb.stepsDef;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.openqa.selenium.WebDriver;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.svb.annotations.NeedBrowser;
+import com.svb.core.TestDataRetriever;
+import com.svb.drivers.DriverCommand;
+import com.svb.drivers.DriverManager;
+import com.svb.drivers.DriverUtilities;
+import com.svb.factory.CustomPageFactory;
+import com.svb.pages.TestPage;
+
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+
+public class TestStep {
+	
+	  private static Logger log = LogManager.getLogger(TestStep.class);
+	    private WebDriver driver;
+	    private String currentTestCaseName;
+	    private DriverUtilities driverUtilities;
+	    private TestPage tobj;
+	
+	    public TestStep() {
+	        //currentTestCaseName = Reporter.getCurrentTestResult().getTestContext().getName();
+	        //DriverCommand.setThreadTestName(currentTestCaseName);
+	        driver = DriverManager.getDriver();
+	        CustomPageFactory.initElements(driver, this);
+	        tobj=new TestPage();
+	    }
+
+	  
+	@NeedBrowser
+	@Test    
+	@Given("^I am on the Google Home page$")
+	public void i_am_on_the_Google_Home_page() throws Throwable {
+		driver.get("https://www.google.com/");
+		DriverCommand.takeScreenshot("Step 1: Home Page");
+	}
+	@Test
+	@When("^I enter the following searh wording \"([^\"]*)\" and click on serach button$")
+	public void i_enter_the_following_searh_wording_and_click_on_serach_button(String arg1) throws Throwable {
+		tobj.Message(arg1);
+	}
+
+	@Then("^I should see the corresponding serach message$")
+	public void i_should_see_the_corresponding_serach_message() throws Throwable {
+	   String value=tobj.verfiyLink();
+	   DriverCommand.takeScreenshot("Step 3: Search results page");
+		}
+	
+}
+
+
+feature:
+@AppianSample
+@smokeTest
+Feature: Google - Home Page Tes Example
+
+  Background: User navigates to Google home page
+    Given I am on the Google Home page
+  
+  @1
+  @testSearch
+  Scenario: Simple Goofle 
+    When I enter the following searh wording "SVB" and click on serach button
+    Then I should see the corresponding serach message
+
